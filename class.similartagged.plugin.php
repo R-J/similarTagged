@@ -81,14 +81,21 @@ class SimilarTaggedPlugin extends Gdn_Plugin {
         $configurationModule->renderAll();
     }
 
-    public function pluginController_similarTagged_create($sender, $args) {
-        // 1. This should only be done if the requested discussion has >= 2 tags
-        // 2. There _must_ be some caching done!
+    public function discussionController_beforeDiscussionRender_handler($sender, $args) {
+        if (val('Tags', $sender->Discussion, false) === false) {
+            return;
+        }
+        $this->getSimilar($sender->Discussion->DiscussionID);
+    }
+
+    protected function getSimilar($discussionID) {
+        // There _must_ be some caching done!
         //    "SimilarTagged" + DiscussionID = array of DiscussionIDs
 
-        // Get ID from slug.
-        $discussionID = intval(val(0, $args, 154));
-        decho($discussionID, 'DiscussionID: ');
+        $perms = DiscussionModel::categoryPermissions();
+        $cacheKey = 'SimilarTagged_'.$discussionID.'_'.implode('_', $perms);
+decho($cacheKey, 'key', true);
+
 
         // Get all discussions that have been tagged with the same tags.
         $px = Gdn::database()->DatabasePrefix;
@@ -103,25 +110,66 @@ class SimilarTaggedPlugin extends Gdn_Plugin {
         $sql .= '    WHERE td3.DiscussionID = :DiscussionID ';
         $sql .= '  ) ';
         $sql .= ') ';
+        // Add Category permission check.
+        if ($perms !== true) {
+            $sql .= "AND td1.CategoryID IN ('";
+            $sql .= implode("','", $perms);
+            $sql .= "') ";
+        }
         $result = Gdn::database()->query(
             $sql,
             [':DiscussionID' => $discussionID]
         )->resultObject();
-        decho($result, 'Result from db:');
 
         // Group results by discussions.
         $discussions = [];
         foreach ($result as $item) {
-            decho($item);
-            $discussions[$item->DiscussionID][] = $item->TagID;
+            $TagIDs = val('TagIDs', $discussions[$item->DiscussionID], []);
+            $TagIDs[] = $item->TagID;
+            $discussions[$item->DiscussionID] = [
+                'CategoryID' => $item->CategoryID,
+                'TagIDs' => $TagIDs
+            ];
         }
+decho($discussions);
 
-        // Loop through discussions to find 
-        $currentDiscussion = $discussions[$discussionID];
+        // Loop through discussions to find the most similar discussions.
+        $discussion = $discussions[$discussionID];
         unset($discussions[$discussionID]);
-        foreach ($discussions as $discussion) {
-            decho(array)
+        $matchingDiscussions = [];
+        $countCurrent = count($discussion['TagIDs']);
+        foreach ($discussions as $id => $item) {
+            // Number of tags in both discussions.
+            $countBoth = count(array_intersect($discussion['TagIDs'], $item['TagIDs']));
+            if ($countBoth == 0) {
+                // If there are no matching elements, don't proceed.
+                continue;
+            }
+            // Save DiscussionID
+            $matchingDiscussions[] = [
+                'DiscussionID' => $id,
+                'MatchingTags' => $countBoth,
+                'NonMatchingTags' => $countCurrent + count($item['TagIDs']) - 2 * $countBoth
+            ];
         }
-        decho($discussions);
+decho($matchingDiscussions, 'unsorted');
+
+        // Sort result.
+        usort($matchingDiscussions, function($a, $b) {
+            if ($a['MatchingTags'] > $b['MatchingTags']) {
+                return -1;
+            } elseif ($a['MatchingTags'] < $b['MatchingTags']) {
+                return 1;
+            } else {
+                if ($a['NonMatchingTags'] < $b['NonMatchingTags']) {
+                    return -1;
+                } elseif ($a['NonMatchingTags'] > $b['NonMatchingTags']) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+            }
+        });
+decho($matchingDiscussions, 'sorted');
     }
 }
