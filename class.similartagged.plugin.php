@@ -35,47 +35,22 @@ class SimilarTaggedPlugin extends Gdn_Plugin {
         $sender->setData('Title', t('SimilarTagged Settings'));
 
         $configurationModule = new configurationModule($sender);
-
         $configurationModule->initialize(
             [
-                'similarTagged.Text' => [
-                    'Default' => 'Default',
+                'similarTagged.Limit' => [
+                    'Default' => '5',
+                    'LabelCode' => 'Number of similar tagged discussions to show',
+                    // 'Description' => 'Bla bla',
+                    'Options' => ['class' => 'InputBox']
+                ],
+                'similarTagged.AssetTarget' => [
+                    'Default' => 'Panel',
+                    'LabelCode' => 'Where the plugin should be rendered.',
+                    'Description' => 'If your theme doesn\'t provide other options, "Panel" would most probably be correct',
                     'Options' => ['class' => 'InputBox BigInput']
                 ],
-                'similarTagged.DropDown' => [
-                    'Control' => 'DropDown',
-                    'Items' => [
-                        'i1' => 'One',
-                        'i2' => 'Two',
-                        'i3' => 'Three'
-                    ],
-                    'LabelCode' => 'DropDown Element',
-                    'Options' => ['IncludeNull' => true]
-                ],
-                'similarTagged.Category' => [
-                    'Control' => 'CategoryDropDown',
-                    'LabelCode' => 'Category Drop Down',
-                    'Description' => 'Bla bla',
-                    'Options' => ['IncludeNull' => true]
-                ],
 
-                'similarTagged.Toggle' => [
-                    'Control' => 'CheckBox',
-                    'Description' => 'Toggle values',
-                    'Default' => true
-                ],
-                'similarTagged.Radio' => [
-                    'Control' => 'RadioList',
-                    'Items' => [
-                        'Item1' => 'One',
-                        'Item2' => 'Two'
-                    ],
-                    'Default' => 'Item1'
-                ],
-                'similarTagged.Picture' => [
-                    'Control' => 'ImageUpload',
-                    'LabelCode' => 'Please upload a picture'
-                ]
+
             ]
         );
         $configurationModule->renderAll();
@@ -88,76 +63,11 @@ class SimilarTaggedPlugin extends Gdn_Plugin {
             return;
         }
 
-        $discussionIDs = $this->getSimilar($sender->Discussion->DiscussionID);
+        $similarTagsModule = new SimilarTagsModule($sender);
+        $sender->addModule($similarTagsModule);
 
-        // $perms = DiscussionModel::categoryPermissions();
-        // 
-        // $discussions = $sender->DiscussionModel->getIn($discussionIDs)->resultObject();
-        $discussions = $sender->DiscussionModel->get(
-            c('similarTagged.Limit', 50),
-            '',
-            ['DiscussionID in' => $discussionIDs]
-        )->resultObject();
-        decho($discussions, 'discussions', true);
-    }
 
-    protected function getSimilar($discussionID) {
-        // Get from cache if available.
-        $cacheKey = 'SimilarTagged_'.$discussionID;
-        $discussionIDs = Gdn::cache()->get($cacheKey);
-        if ($discussionIDs !== Gdn_Cache::CACHEOP_FAILURE) {
-            return $discussionIDs;
-        }
-
-        $px = Gdn::database()->DatabasePrefix;
-
-        $sql = <<< EOS
-SELECT SharedTags.DiscussionID
-FROM (
-    SELECT count(TagID) AS "CountShared", DiscussionID
-    FROM {$px}TagDiscussion
-    WHERE TagID IN (
-      SELECT TagID
-      FROM {$px}TagDiscussion
-      WHERE DiscussionID = :DiscussionID1
-    )
-    GROUP BY DiscussionID
-) AS SharedTags
-LEFT JOIN (
-    SELECT count(TagID) AS "CountAll", DiscussionID
-    FROM {$px}TagDiscussion
-    WHERE DiscussionID IN (
-        SELECT DiscussionID
-        FROM {$px}TagDiscussion
-        WHERE TagID IN (
-          SELECT TagID
-          FROM {$px}TagDiscussion
-          WHERE DiscussionID = :DiscussionID2
-        )
-    )
-    GROUP BY DiscussionID
-) AS AllTags ON SharedTags.DiscussionID = AllTags.DiscussionID
-ORDER BY CountShared DESC, CountAll - CountShared ASC
-EOS;
-        $result = Gdn::database()->query(
-            $sql,
-            [':DiscussionID1' => $discussionID, ':DiscussionID2' => $discussionID]
-        )->resultArray();
-
-        // Remove the current discussion from the result set.
-        $discussionIDs = array_diff(
-            array_column($result, 'DiscussionID'),
-            [$discussionID]
-        );
-
-        // Store for faster retrieval.
-        Gdn::cache()->store(
-            $cacheKey,
-            $discussionIDs,
-//TODO: change 18 to 180!!!
-            [Gdn_Cache::FEATURE_EXPIRY => 18] // 3 minutes
-        );
-
-        return $discussionIDs;
+        // $discussions = $this->getSimilarDiscussions($sender->Discussion->DiscussionID);
+        // $discussions = $this->getSimilar($sender->Discussion->DiscussionID);
     }
 }
