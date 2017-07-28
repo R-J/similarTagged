@@ -14,25 +14,32 @@ $PluginInfo['similarTagged'] = [
 ];
 
 class SimilarTaggedPlugin extends Gdn_Plugin {
+    /**
+     * Init config with sane values.
+     *
+     * @return void.
+     */
     public function setup() {
-        // touchConfig('similartagged.ConfigName', 'Value');
-        // $this->structure()
+        touchConfig(
+            [
+                'similarTagged.AssetTarget' => 'Panel',
+                'similarTagged.Limit' => 5
+            ]
+        );
     }
 
-    public function structure() {
-        /*
-        Gdn::structure()
-            ->table('SomeTable')
-            ->column('AcceptedUserID', 'int', 0)
-            ->set();
-        */
-    }
-
+    /**
+     * Create simple settings page.
+     *
+     * @param SettingsController $sender Instance of the calling class.
+     *
+     * @return void.
+     */
     public function settingsController_similarTagged_create($sender) {
         $sender->permission('Garden.Settings.Manage');
 
         $sender->addSideMenu('dashboard/settings/plugins');
-        $sender->setData('Title', t('SimilarTagged Settings'));
+        $sender->setData('Title', t('Similar Tagged Settings'));
 
         $configurationModule = new configurationModule($sender);
         $configurationModule->initialize(
@@ -49,25 +56,33 @@ class SimilarTaggedPlugin extends Gdn_Plugin {
                     'Description' => 'If your theme doesn\'t provide other options, "Panel" would most probably be correct',
                     'Options' => ['class' => 'InputBox BigInput']
                 ],
-
-
             ]
         );
         $configurationModule->renderAll();
     }
 
-    public function discussionController_beforeDiscussionRender_handler($sender, $args) {
-        // If this discussion has no tags, there should be no similar
+    /**
+     * Attach module to discussions.
+     *
+     * @param DiscussionController $sender Instance of the calling class.
+     *
+     * @return void.
+     */
+    public function discussionController_beforeDiscussionRender_handler($sender) {
+        // If this discussion has no tags, there could be no similar
         // discussions shown.
         if (val('Tags', $sender->Discussion, false) === false) {
             return;
         }
 
-        $similarTagsModule = new SimilarTagsModule($sender);
-        $sender->addModule($similarTagsModule);
+        // require(__DIR__.'/modules/class.similartaggedmodule.php');
+        $similarTaggedModule = new SimilarTaggedModule($sender);
+        $similarTaggedModule->setView($sender->fetchViewLocation('similartagged', '', 'plugins/similarTagged'));
+        $similarTaggedModule->setData(
+            'Discussions',
+            $similarTaggedModule->getData($sender->Discussion->DiscussionID)
+        );
 
-
-        // $discussions = $this->getSimilarDiscussions($sender->Discussion->DiscussionID);
-        // $discussions = $this->getSimilar($sender->Discussion->DiscussionID);
+        $sender->addModule($similarTaggedModule);
     }
 }

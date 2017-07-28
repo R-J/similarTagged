@@ -1,22 +1,28 @@
 <?php defined('APPLICATION') or die;
 
 class SimilarTaggedModule extends Gdn_Module {
-
-    public function __construct($sender = '', $applicationFolder = false) {
-        if ($sender !== '' && $sender->ClassName = 'DiscussionController') {
-            $this->setData(
-                'Discussions',
-                $this->getData($sender->Discussion->DiscussionID)
-            );
-        }
-
-        parent::__construct($sender, $applicationFolder);
-    }
-
+    /**
+     * Returns the configurable asset target. "Panel" by default.
+     *
+     * @return string The asset target.
+     */
     public function assetTarget() {
         return c('similarTagged.AssetTarget',  'Panel');
     }
 
+    /**
+     * Get similar discussions based on the discussions tags.
+     *
+     * The result is ordered by
+     * 1. criterion: number of matching tags (descending) and
+     * 2. criterion: number of non matching tags (ascending)
+     *
+     * The method respects category permissions.
+     *
+     * @param int $discussionID The discussion id.
+     *
+     * @return array A list of discussion names and ids which are similar tagged.
+     */
     public function getData($discussionID) {
         // Construct permission check if needed.
         $permissionCheck = '';
@@ -68,22 +74,5 @@ EOS;
                 ':Limit' => c('similarTagged.Limit', 5)
             ]
         )->resultArray();
-    }
-
-    public function toString() {
-        ob_start();
-        ?>
-<div class="Box BoxSimilarTagged">
-    <h4><?= t('Similar Tagged') ?></h4>
-    <ul class="PanelInfo">
-    <?php foreach ($this->data as $discussion): ?>
-        <li>
-            <?= discussionUrl($discussion) ?>
-        </li>
-    <?php endforeach ?>
-    </ul>
-</div>
-        <?php
-        return ob_get_clean();
     }
 }
