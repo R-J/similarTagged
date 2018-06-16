@@ -5,8 +5,12 @@ class SimilarTaggedModule extends Gdn_Module {
      * Init the module.
      *
      * Get similar discussions and sets the view.
-     * @param string  $sender            [description]
-     * @param boolean $applicationFolder [description]
+     *
+     * @param object $sender Instance of the calling class.
+     * @param string $applicationFolder The folder which determines where the
+     *                                  view can be found.
+     *
+     * @return void.
      */
     public function __construct(
         $sender = '',
@@ -27,7 +31,7 @@ class SimilarTaggedModule extends Gdn_Module {
      * @return string The asset target.
      */
     public function assetTarget() {
-        return c('SimilarTagged.AssetTarget',  'Panel');
+        return c('SimilarTagged.AssetTarget', 'Panel');
     }
 
     /**

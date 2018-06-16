@@ -16,11 +16,8 @@ $PluginInfo['similartagged'] = [
 /**
  * Plugin which adds a list of "Similar Tagged" discussions to the panel.
  *
- * A nw module is shown in the panel with a list of discussions. The discussions
- * are a "best match" based on the tags used. Not only the matching tags are
- * taken into consideration, but also the number of non-matching tags.
- * A discussion is higher prioritized if it has more matching tags and
- * few non-matchings tags.
+ * A new module is shown in the panel with a list of discussions. The discussions
+ * are a "best match" based on the tags used.
  */
 class SimilarTaggedPlugin extends Gdn_Plugin {
     /**
@@ -89,8 +86,5 @@ class SimilarTaggedPlugin extends Gdn_Plugin {
             'plugins/similartagged'
         );
         $sender->addModule($similarTaggedModule);
-
-        $tagModule = new tagModule($sender);
-        $sender->addModule($tagModule);
     }
 }
