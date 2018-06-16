@@ -1,78 +1,66 @@
-<?php defined('APPLICATION') or die;
+<?php
 
 class SimilarTaggedModule extends Gdn_Module {
+    /**
+     * Init the module.
+     *
+     * Get similar discussions and sets the view.
+     * @param string  $sender            [description]
+     * @param boolean $applicationFolder [description]
+     */
+    public function __construct(
+        $sender = '',
+        $applicationFolder = 'plugins/similartagged'
+    ) {
+        parent::__construct();
+        $this->setData(
+            'SimilarDiscussions',
+            $this->getData($this->_Sender->Discussion)
+        );
+        $this->setView(
+            $this->fetchViewLocation('similartagged', $applicationFolder)
+        );
+    }
     /**
      * Returns the configurable asset target. "Panel" by default.
      *
      * @return string The asset target.
      */
     public function assetTarget() {
-        return c('similarTagged.AssetTarget',  'Panel');
+        return c('SimilarTagged.AssetTarget',  'Panel');
     }
 
     /**
      * Get similar discussions based on the discussions tags.
      *
-     * The result is ordered by
-     * 1. criterion: number of matching tags (descending) and
-     * 2. criterion: number of non matching tags (ascending)
-     *
      * The method respects category permissions.
      *
-     * @param int $discussionID The discussion id.
+     * @param object $discussion The discussion.
      *
-     * @return array A list of discussion names and ids which are similar tagged.
+     * @return array A list of discussion objects (name and id) which are similar tagged.
      */
-    public function getData($discussionID) {
-        // Construct permission check if needed.
-        $permissionCheck = '';
+    public function getData($discussion) {
         $perms = DiscussionModel::categoryPermissions();
-        if ($perms !== true) {
-            $permissionCheck = 'AND d.CategoryID IN('.implode(',', $perms).')';
+        if (is_array($perms)) {
+            Gdn::sql()->whereIn('d.CategoryID', $perms);
         }
-
-        $px = Gdn::database()->DatabasePrefix;
-
-        $sql = <<< EOS
-SELECT SharedTags.DiscussionID, CountShared, CountAll, CountAll - CountShared, d.CategoryID, d.Name
-FROM (
-    SELECT count(TagID) AS "CountShared", DiscussionID
-    FROM {$px}TagDiscussion
-    WHERE TagID IN (
-      SELECT TagID
-      FROM {$px}TagDiscussion
-      WHERE DiscussionID = :DiscussionID1
-    )
-    GROUP BY DiscussionID
-) AS SharedTags LEFT JOIN (
-    SELECT count(TagID) AS "CountAll", DiscussionID
-    FROM {$px}TagDiscussion
-    WHERE DiscussionID IN (
-        SELECT DiscussionID
-        FROM {$px}TagDiscussion
-        WHERE TagID IN (
-          SELECT TagID
-          FROM {$px}TagDiscussion
-          WHERE DiscussionID = :DiscussionID2
-        )
-    )
-    GROUP BY DiscussionID
-) AS AllTags ON SharedTags.DiscussionID = AllTags.DiscussionID
-LEFT JOIN {$px}Discussion d ON SharedTags.DiscussionID = d.DiscussionID
-WHERE d.DiscussionID <> :DiscussionID3
-{$permissionCheck}
-ORDER BY CountShared DESC, CountAll - CountShared ASC
-LIMIT :Limit
-EOS;
-
-        return Gdn::database()->query(
-            $sql,
-            [
-                ':DiscussionID1' => $discussionID,
-                ':DiscussionID2' => $discussionID,
-                ':DiscussionID3' => $discussionID,
-                ':Limit' => c('similarTagged.Limit', 5)
-            ]
-        )->resultArray();
+        $cacheKey = "SimilarTaggedModule-Discussion-{$discussion->DiscussionID}";
+        return Gdn::sql()
+            ->select('td.DiscussionID, d.Name')
+            ->select('td.TagID', 'COUNT', 'Similarities')
+            ->from('TagDiscussion td')
+            ->join('Discussion d', 'td.DiscussionID = d.DiscussionID')
+            ->where('td.DiscussionID <>', $discussion->DiscussionID)
+            ->whereIn(
+                'TagID',
+                explode(',', val('Tags', $discussion, []))
+            )
+            ->groupBy('td.DiscussionID')
+            ->orderBy('COUNT(td.TagID)', 'DESC')
+            ->orderBy('d.DateInserted', 'DESC')
+            ->limit(c('SimilarTagged.Limit', 5), 0)
+            ->cache($cacheKey, 'get', [Gdn_Cache::FEATURE_EXPIRY => 120])
+            ->get()
+            ->resultObject();
     }
 }

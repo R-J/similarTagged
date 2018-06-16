@@ -1,10 +1,9 @@
 ﻿<?php
-$PluginInfo['similarTagged'] = [
+$PluginInfo['similartagged'] = [
     'Name' => 'Similar Tagged',
     'Description' => 'Adds a "Similar Tagged" module to discussions.',
     'Version' => '0.1.0',
-    'RequiredApplications' => ['Vanilla' => '>= 2.3'],
-    'RequiredPlugins' => ['Tagging' => '>=1.8.12'],
+    'RequiredApplications' => ['Vanilla' => '>= 2.6'],
     'SettingsPermission' => 'Garden.Settings.Manage',
     'SettingsUrl' => '/dashboard/settings/similartagged',
     'MobileFriendly' => true,
@@ -32,8 +31,8 @@ class SimilarTaggedPlugin extends Gdn_Plugin {
     public function setup() {
         touchConfig(
             [
-                'similarTagged.AssetTarget' => 'Panel',
-                'similarTagged.Limit' => 5
+                'SimilarTagged.AssetTarget' => 'Panel',
+                'SimilarTagged.Limit' => 5
             ]
         );
     }
@@ -54,13 +53,13 @@ class SimilarTaggedPlugin extends Gdn_Plugin {
         $configurationModule = new configurationModule($sender);
         $configurationModule->initialize(
             [
-                'similarTagged.Limit' => [
+                'SimilarTagged.Limit' => [
                     'Default' => '5',
                     'LabelCode' => 'Discussion Limit',
                     'Description' => 'Number of similar tagged discussions to show in module',
                     'Options' => ['type' => 'number']
                 ],
-                'similarTagged.AssetTarget' => [
+                'SimilarTagged.AssetTarget' => [
                     'Default' => 'Panel',
                     'LabelCode' => 'Asset Target',
                     'Description' => 'If your theme doesn\'t provide other options, "Panel" would most probably be correct',
@@ -80,18 +79,18 @@ class SimilarTaggedPlugin extends Gdn_Plugin {
     public function discussionController_beforeDiscussionRender_handler($sender) {
         // If this discussion has no tags, there could be no similar
         // discussions shown.
-        if (val('Tags', $sender->Discussion, false) === false) {
+        if (!val('Tags', $sender->Discussion, false)) {
             return;
         }
 
         // Create module, set view, load data and attach to panel
-        $similarTaggedModule = new SimilarTaggedModule($sender);
-        $similarTaggedModule->setView($sender->fetchViewLocation('similartagged', '', 'plugins/similarTagged'));
-        $similarTaggedModule->setData(
-            'Discussions',
-            $similarTaggedModule->getData($sender->Discussion->DiscussionID)
+        $similarTaggedModule = new SimilarTaggedModule(
+            $sender,
+            'plugins/similartagged'
         );
-
         $sender->addModule($similarTaggedModule);
+
+        $tagModule = new tagModule($sender);
+        $sender->addModule($tagModule);
     }
 }
