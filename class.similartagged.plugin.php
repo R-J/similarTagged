@@ -2,7 +2,7 @@
 $PluginInfo['similartagged'] = [
     'Name' => 'Similar Tagged',
     'Description' => 'Adds a "Similar Tagged" module to discussions.',
-    'Version' => '0.1.0',
+    'Version' => '0.2.0',
     'RequiredApplications' => ['Vanilla' => '>= 2.6'],
     'SettingsPermission' => 'Garden.Settings.Manage',
     'SettingsUrl' => '/dashboard/settings/similartagged',
