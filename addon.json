@@ -1,0 +1,23 @@
+{
+    "name": "Similar Tagged",
+    "description": "Adds a \"Similar Tagged\" module to discussions.",
+    "version": "0.2.0",
+    "requiredTheme": false,
+    "mobileFriendly": true,
+    "settingsUrl": "/dashboard/settings/similartagged",
+    "settingsPermission": "Garden.Settings.Manage",
+    "hasLocale": true,
+    "registerPermissions": false,
+    "key": "similartagged",
+    "type": "addon",
+    "authors": [
+        {
+            "name": "Robin Jurinka",
+            "homepage": "https://open.vanillaforums.com/profile/r_j"
+        }
+    ],
+    "require": {
+        "vanilla": ">=2.6"
+    },
+    "license": "MIT"
+}

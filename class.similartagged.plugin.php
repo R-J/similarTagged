@@ -74,6 +74,7 @@ class SimilarTaggedPlugin extends Gdn_Plugin {
      * @return void.
      */
     public function discussionController_beforeDiscussionRender_handler($sender) {
+        decho($this->getPluginKey('settingsPermission'));
         // If this discussion has no tags, there could be no similar
         // discussions shown.
         if (!val('Tags', $sender->Discussion, false)) {
